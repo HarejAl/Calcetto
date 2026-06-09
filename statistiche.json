@@ -2,12 +2,12 @@
     "Luca": {
         "ruolo": "Indifferente",
         "vinte": 2,
-        "perse": 0
+        "perse": 1
     },
     "Giovanni": {
         "ruolo": "Indifferente",
         "vinte": 1,
-        "perse": 1
+        "perse": 2
     },
     "Alessandro": {
         "ruolo": "Indifferente",
@@ -26,7 +26,7 @@
     },
     "Alexander": {
         "ruolo": "Indifferente",
-        "vinte": 1,
+        "vinte": 2,
         "perse": 0
     },
     "Rafael": {
@@ -56,7 +56,7 @@
     },
     "Alberto": {
         "ruolo": "Indifferente",
-        "vinte": 0,
+        "vinte": 1,
         "perse": 1
     },
     "Salvatore": {
