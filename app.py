@@ -117,7 +117,7 @@ def scarta_partita(match):
 
 # --- PAGINA 1: GENERATORE ---
 def pagina_generatore():
-    st.title("⚽ Generatore Calcio Balilla")
+    st.title("Generatore Calcio Balilla")
     if usa_github():
         st.caption("🟢 Connesso al Database Cloud")
     else:
@@ -184,14 +184,8 @@ def pagina_generatore():
     st.subheader("📝 Partite della Sessione Odierna")
     if st.session_state.storico_squadre_oggi:
         for match in reversed(st.session_state.storico_squadre_oggi):
-            def fmt_nome(g):
-                r = st.session_state.stats[g].get("ruolo", "Indifferente")
-                if r == "Attaccante": return f"{g} (A)"
-                if r == "Difesa": return f"{g} (D)"
-                return g
-                
-            sq1_str = " e ".join([fmt_nome(g) for g in match["sq1"]])
-            sq2_str = " e ".join([fmt_nome(g) for g in match["sq2"]])
+            sq1_str = " e ".join(match["sq1"])
+            sq2_str = " e ".join(match["sq2"])
             
             with st.container(border=True):
                 st.write(f"🔵 **Squadra 1:** {sq1_str}  \n🔴 **Squadra 2:** {sq2_str}")
@@ -220,6 +214,8 @@ def pagina_generatore():
             st.session_state.partite_giocate_oggi[g] = 0
         st.success("Sessione azzerata. Contatori di oggi e coppie resettate.", icon=None)
         st.rerun()
+    
+    st.caption("💡 *Questo tasto serve solo a svuotare la lista dei match sullo schermo, resettare i contatori delle partite fatte oggi e azzerare la memoria di chi ha già fatto coppia con chi per fare nuove rotazioni dei presenti. **NON cancella** la classifica globale.*")
 
 # --- PAGINA 2: CLASSIFICA ---
 def pagina_classifica():
