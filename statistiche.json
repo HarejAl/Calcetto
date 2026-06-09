@@ -1,1 +1,67 @@
-{"Luca": 0, "Giovanni": 0, "Alessandro": 0, "Lorenzo": 0, "Alex": 0, "Alexander": 0, "Rafael": 0, "Chiara": 0, "Ludovica": 0, "Lucio": 0, "Libero": 0, "Alberto": 0, "Salvatore": 0}
+{
+    "Luca": {
+        "ruolo": "Indifferente",
+        "vinte": 1,
+        "perse": 0
+    },
+    "Giovanni": {
+        "ruolo": "Indifferente",
+        "vinte": 0,
+        "perse": 1
+    },
+    "Alessandro": {
+        "ruolo": "Indifferente",
+        "vinte": 0,
+        "perse": 0
+    },
+    "Lorenzo": {
+        "ruolo": "Indifferente",
+        "vinte": 0,
+        "perse": 0
+    },
+    "Alex": {
+        "ruolo": "Indifferente",
+        "vinte": 0,
+        "perse": 0
+    },
+    "Alexander": {
+        "ruolo": "Indifferente",
+        "vinte": 1,
+        "perse": 0
+    },
+    "Rafael": {
+        "ruolo": "Indifferente",
+        "vinte": 0,
+        "perse": 0
+    },
+    "Chiara": {
+        "ruolo": "Indifferente",
+        "vinte": 0,
+        "perse": 0
+    },
+    "Ludovica": {
+        "ruolo": "Indifferente",
+        "vinte": 0,
+        "perse": 0
+    },
+    "Lucio": {
+        "ruolo": "Indifferente",
+        "vinte": 0,
+        "perse": 0
+    },
+    "Libero": {
+        "ruolo": "Indifferente",
+        "vinte": 0,
+        "perse": 0
+    },
+    "Alberto": {
+        "ruolo": "Indifferente",
+        "vinte": 0,
+        "perse": 1
+    },
+    "Salvatore": {
+        "ruolo": "Indifferente",
+        "vinte": 0,
+        "perse": 0
+    }
+}
