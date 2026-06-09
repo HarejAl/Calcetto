@@ -1,18 +1,18 @@
 {
     "Luca": {
         "ruolo": "Indifferente",
-        "vinte": 2,
-        "perse": 1
+        "vinte": 0,
+        "perse": 0
     },
     "Giovanni": {
         "ruolo": "Indifferente",
-        "vinte": 1,
-        "perse": 2
+        "vinte": 0,
+        "perse": 0
     },
     "Alessandro": {
         "ruolo": "Indifferente",
-        "vinte": 3,
-        "perse": 1
+        "vinte": 0,
+        "perse": 0
     },
     "Lorenzo": {
         "ruolo": "Indifferente",
@@ -26,8 +26,8 @@
     },
     "Alexander": {
         "ruolo": "Difesa",
-        "vinte": 2,
-        "perse": 2
+        "vinte": 0,
+        "perse": 0
     },
     "Rafael": {
         "ruolo": "Indifferente",
@@ -37,7 +37,7 @@
     "Chiara": {
         "ruolo": "Indifferente",
         "vinte": 0,
-        "perse": 1
+        "perse": 0
     },
     "Ludovica": {
         "ruolo": "Indifferente",
@@ -46,18 +46,18 @@
     },
     "Lucio": {
         "ruolo": "Indifferente",
-        "vinte": 1,
-        "perse": 3
+        "vinte": 0,
+        "perse": 0
     },
     "Libero": {
         "ruolo": "Indifferente",
-        "vinte": 1,
-        "perse": 1
+        "vinte": 0,
+        "perse": 0
     },
     "Alberto": {
         "ruolo": "Attaccante",
-        "vinte": 2,
-        "perse": 1
+        "vinte": 0,
+        "perse": 0
     },
     "Salvatore": {
         "ruolo": "Indifferente",
