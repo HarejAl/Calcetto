@@ -26,12 +26,10 @@ def salva_statistiche(stats):
         json.dump(stats, f)
 
 def carica_presenti(tutti_i_giocatori):
-    """Carica la lista dei presenti dell'ultima volta. Se non esiste, mette tutti."""
     if os.path.exists(FILE_PRESENTI):
         try:
             with open(FILE_PRESENTI, 'r') as f:
                 lista = json.load(f)
-                # Filtra solo i presenti che esistono ancora nell'anagrafica globale
                 validi = [g for g in lista if g in tutti_i_giocatori]
                 return validi if validi else tutti_i_giocatori.copy()
         except:
@@ -58,7 +56,7 @@ if 'coppie_giocate_oggi' not in st.session_state:
 # --- PAGINA 1: GENERATORE BILIARDINO ---
 def pagina_generatore():
     st.title("Generatore Calcio Balilla")
-    st.write("Seleziona i presenti. L'algoritmo calcolera' le squadre privilegiando chi ha giocato meno.")
+    st.write("Seleziona i presenti. L'algoritmo calcolera' le squadre in background basandosi sullo storico, privilegiando chi ha giocato meno.")
 
     stats = st.session_state.stats
     tutti_i_giocatori = sorted(list(stats.keys()))
@@ -72,17 +70,14 @@ def pagina_generatore():
         if g not in st.session_state.partite_giocate_oggi:
             st.session_state.partite_giocate_oggi[g] = 0
 
-    # 1. Recupera la lista dei presenti salvata l'ultima volta
     presenti_salvati = carica_presenti(tutti_i_giocatori)
 
-    # 2. Mostra il selettore con i presenti della volta scorsa già spuntati
     presenti_oggi = st.multiselect(
         "Chi gioca oggi?", 
         options=tutti_i_giocatori, 
         default=presenti_salvati
     )
     
-    # 3. Salva istantaneamente la selezione su file ad ogni modifica
     salva_presenti(presenti_oggi)
 
     st.divider()
@@ -102,7 +97,7 @@ def pagina_generatore():
                     key=lambda x: st.session_state.partite_giocate_oggi.get(x, 0)
                 )
                 
-                i_quattro_eletti = presenti_ordinati[:4]
+                i_quattro_eletti =Screen = presenti_ordinati[:4]
                 
                 random.shuffle(i_quattro_eletti)
                 tentativo_a = tuple(sorted(i_quattro_eletti[:2]))
@@ -164,7 +159,6 @@ def aggiungi_giocatore():
         if 'partite_giocate_oggi' in st.session_state:
             st.session_state.partite_giocate_oggi[nuovo] = 0
             
-        # Quando aggiungi un giocatore, lo inseriamo automaticamente tra i presenti di oggi
         if os.path.exists(FILE_PRESENTI):
             try:
                 with open(FILE_PRESENTI, 'r') as f:
@@ -196,11 +190,23 @@ def pagina_gestione():
         st.warning(st.session_state.msg_warning, icon=None)
         del st.session_state.msg_warning
 
+    # --- NUOVA SEZIONE ELENCO GIOCATORI ---
     st.subheader("Colleghi Attualmente Registrati")
     if tutti:
-        st.write(", ".join(tutti))
+        st.write(f"Totale nel database: **{len(tutti)}**")
+        
+        # Genera una griglia a 3 colonne
+        col_A, col_B, col_C = st.columns(3)
+        for indice, giocatore in enumerate(tutti):
+            # Distribuisce i nomi equamente tra le colonne
+            if indice % 3 == 0:
+                col_A.write(f"• {giocatore}")
+            elif indice % 3 == 1:
+                col_B.write(f"• {giocatore}")
+            else:
+                col_C.write(f"• {giocatore}")
     else:
-        st.write("Nessun giocatore presente nella lista.")
+        st.info("Nessun giocatore presente nella lista.", icon=None)
 
     st.divider()
 
