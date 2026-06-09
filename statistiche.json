@@ -6,13 +6,13 @@
     },
     "Giovanni": {
         "ruolo": "Indifferente",
-        "vinte": 0,
+        "vinte": 1,
         "perse": 1
     },
     "Alessandro": {
         "ruolo": "Indifferente",
         "vinte": 1,
-        "perse": 0
+        "perse": 1
     },
     "Lorenzo": {
         "ruolo": "Indifferente",
@@ -47,11 +47,11 @@
     "Lucio": {
         "ruolo": "Indifferente",
         "vinte": 0,
-        "perse": 1
+        "perse": 2
     },
     "Libero": {
         "ruolo": "Indifferente",
-        "vinte": 0,
+        "vinte": 1,
         "perse": 1
     },
     "Alberto": {
