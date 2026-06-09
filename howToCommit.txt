@@ -1,0 +1,45 @@
+=========================================
+ GUIDA RAPIDA: GESTIONE CALCIO BALILLA
+=========================================
+
+--- CASO A: AGGIORNAMENTO NORMALE ---
+Usa questi 3 comandi ogni volta che modifichi il codice (app.py) e vuoi mandarlo online:
+
+1) Aggiungi i file modificati:
+   git add .
+
+2) Crea il "pacchetto" con un messaggio:
+   git commit -m "Descrivi brevemente la modifica qui"
+
+3) Spedisci tutto online (Streamlit si aggiornerà da solo):
+   git push origin main
+
+
+--- CASO B: ERRORE "DIVERGENT BRANCHES" ---
+Se fai "git push" e ricevi un errore (perché l'app online ha salvato nuove partite mentre tu modificavi il codice), usa questa sequenza per unire le cose senza perdere dati:
+
+1) Dici a Git di fondere le modifiche:
+   git config pull.rebase false
+
+2) Scarica i nuovi salvataggi da Internet:
+   git pull origin main
+   (Nota: se si apre una strana schermata di testo, scrivi :wq e premi Invio)
+
+3) Manda il codice aggiornato + i vecchi salvataggi di nuovo online:
+   git push origin main
+
+
+--- CASO C: AZZERARE LA CLASSIFICA (Fine Test o Fine Stagione) ---
+Per azzerare i punteggi e far ripartire tutti da zero sull'app online:
+
+1) Scarica i dati aggiornati sul tuo PC:
+   git pull origin main
+
+2) Azzera i punteggi:
+   Lancia lo script locale "reset_classifica.py" 
+   OPPURE apri "statistiche.json" e metti a mano i contatori a 0.
+
+3) Manda il file pulito online:
+   git add statistiche.json
+   git commit -m "Reset classifica stagionale"
+   git push origin main

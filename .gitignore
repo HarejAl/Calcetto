@@ -1,5 +1,6 @@
 # Script di amministrazione locale
-reset_classifica.py
+resetClassifica.py
+howToCommit.py
 
 # File di sistema
 __pycache__/

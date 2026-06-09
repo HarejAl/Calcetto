@@ -25,7 +25,6 @@ def carica_da_github(nome_file, default_data):
             contents = repo.get_contents(nome_file)
             return json.loads(contents.decoded_content.decode("utf-8"))
         except Exception:
-            # Se il file non esiste ancora su GitHub, restituisce i dati di default
             return default_data
     else:
         if os.path.exists(nome_file):
@@ -49,18 +48,15 @@ def salva_su_github(nome_file, dati):
         with open(nome_file, 'w') as f:
             json.dump(dati, f, indent=4)
 
-
 # --- FUNZIONI DI SUPPORTO SPECIFICHE ---
 def carica_statistiche():
     default_stats = {g: {"ruolo": "Indifferente", "vinte": 0, "perse": 0} for g in GIOCATORI_DEFAULT}
     stats = carica_da_github(FILE_STATISTICHE, default_stats)
     
-    # Migrazione sicura per vecchi dati locali
     for k, v in stats.items():
         if isinstance(v, int):
             stats[k] = {"ruolo": "Indifferente", "vinte": 0, "perse": 0}
             
-    # Se abbiamo appena creato i default, salviamoli
     if stats == default_stats and not usa_github() and not os.path.exists(FILE_STATISTICHE):
         salva_su_github(FILE_STATISTICHE, stats)
         
@@ -71,8 +67,7 @@ def carica_presenti(tutti_i_giocatori):
     validi = [g for g in lista if g in tutti_i_giocatori]
     return validi if validi else tutti_i_giocatori.copy()
 
-
-# --- INIZIALIZZAZIONE STATI (MEMORIA) ---
+# --- INIZIALIZZAZIONE STATI ---
 if 'stats' not in st.session_state:
     st.session_state.stats = carica_statistiche()
 if 'storico_squadre_oggi' not in st.session_state:
@@ -120,19 +115,15 @@ def scarta_partita(match):
     st.session_state.coppie_giocate_oggi.discard(match["sq1"])
     st.session_state.coppie_giocate_oggi.discard(match["sq2"])
 
-
 # --- PAGINA 1: GENERATORE ---
 def pagina_generatore():
     st.title("⚽ Generatore Calcio Balilla")
-    
-    # Piccolo indicatore per farti sapere se sta usando GitHub
     if usa_github():
-        st.caption("🟢 Connesso al Database Cloud (GitHub)")
+        st.caption("🟢 Connesso al Database Cloud")
     else:
         st.caption("🟡 Modalità Locale")
 
     st.write("Seleziona i presenti. Il sistema darà priorità a chi ha giocato meno oggi.")
-
     tutti_i_giocatori = sorted(list(st.session_state.stats.keys()))
 
     if not tutti_i_giocatori:
@@ -143,13 +134,8 @@ def pagina_generatore():
         if g not in st.session_state.partite_giocate_oggi:
             st.session_state.partite_giocate_oggi[g] = 0
 
-    presenti_oggi = st.multiselect(
-        "Chi gioca oggi?", 
-        options=tutti_i_giocatori, 
-        default=carica_presenti(tutti_i_giocatori)
-    )
+    presenti_oggi = st.multiselect("Chi gioca oggi?", options=tutti_i_giocatori, default=carica_presenti(tutti_i_giocatori))
     salva_su_github(FILE_PRESENTI, presenti_oggi)
-
     usa_ranking = st.toggle("⚖️ Bilancia squadre (Livello e Ruoli)", value=True)
     st.divider()
 
@@ -188,18 +174,11 @@ def pagina_generatore():
             st.session_state.coppie_giocate_oggi.add(squadra_a)
             st.session_state.coppie_giocate_oggi.add(squadra_b)
             
-            nuovo_match = {
-                "id": str(uuid.uuid4()),
-                "sq1": squadra_a,
-                "sq2": squadra_b,
-                "risolta": False,
-                "vincitrice": None
-            }
+            nuovo_match = {"id": str(uuid.uuid4()), "sq1": squadra_a, "sq2": squadra_b, "risolta": False, "vincitrice": None}
             st.session_state.storico_squadre_oggi.append(nuovo_match)
 
             for giocatore in squadra_a + squadra_b:
                 st.session_state.partite_giocate_oggi[giocatore] += 1
-            
             st.rerun()
 
     st.subheader("📝 Partite della Sessione Odierna")
@@ -216,7 +195,6 @@ def pagina_generatore():
             
             with st.container(border=True):
                 st.write(f"🔵 **Squadra 1:** {sq1_str}  \n🔴 **Squadra 2:** {sq2_str}")
-                
                 if not match["risolta"]:
                     colA, colB, colC = st.columns(3)
                     if colA.button("🏆 Vince Sq. 1", key=f"v1_{match['id']}", use_container_width=True):
@@ -247,7 +225,6 @@ def pagina_generatore():
 def pagina_classifica():
     st.title("🏆 Classifica")
     st.write("Ranking globale aggiornato in tempo reale.")
-
     stats = st.session_state.stats
     if not stats:
         st.info("Nessun giocatore registrato.")
@@ -259,13 +236,7 @@ def pagina_classifica():
         perse = dati.get("perse", 0)
         totali = vinte + perse
         win_rate = (vinte / totali * 100) if totali > 0 else 0.0
-        classifica.append({
-            "nome": giocatore,
-            "win_rate": win_rate,
-            "totali": totali,
-            "vinte": vinte,
-            "perse": perse
-        })
+        classifica.append({"nome": giocatore, "win_rate": win_rate, "totali": totali, "vinte": vinte, "perse": perse})
 
     classifica_ordinata = sorted(classifica, key=lambda x: (x["win_rate"], x["vinte"]), reverse=True)
     giocatori_attivi = [p for p in classifica_ordinata if p["totali"] > 0]
@@ -287,22 +258,18 @@ def pagina_classifica():
         st.write("👤 **Ancora nessuna partita registrata:**")
         st.write(", ".join([p["nome"] for p in giocatori_inattivi]))
 
-
-# --- CALLBACK E PAGINA GESTIONE ---
+# --- PAGINA 3: GESTIONE ---
 def aggiungi_giocatore():
     nuovo = st.session_state.input_nome.strip()
     if nuovo and nuovo not in st.session_state.stats:
         st.session_state.stats[nuovo] = {"ruolo": "Indifferente", "vinte": 0, "perse": 0}
         salva_su_github(FILE_STATISTICHE, st.session_state.stats)
-        
         if 'partite_giocate_oggi' in st.session_state:
             st.session_state.partite_giocate_oggi[nuovo] = 0
-            
         lista = carica_presenti(list(st.session_state.stats.keys()))
         if nuovo not in lista:
             lista.append(nuovo)
             salva_su_github(FILE_PRESENTI, lista)
-            
         st.session_state.msg_success = f"{nuovo} aggiunto!"
         st.session_state.input_nome = "" 
     elif nuovo in st.session_state.stats:
@@ -314,22 +281,17 @@ def pagina_gestione():
     tutti = sorted(list(stats.keys()))
 
     if "msg_success" in st.session_state:
-        st.success(st.session_state.msg_success, icon=None)
-        del st.session_state.msg_success
+        st.success(st.session_state.msg_success, icon=None); del st.session_state.msg_success
     if "msg_warning" in st.session_state:
-        st.warning(st.session_state.msg_warning, icon=None)
-        del st.session_state.msg_warning
+        st.warning(st.session_state.msg_warning, icon=None); del st.session_state.msg_warning
 
-    # --- SEZIONE LISTA GIOCATORI E RUOLI ---
     st.subheader("👥 Colleghi Attualmente Registrati")
     if tutti:
         st.write(f"Totale nel database: **{len(tutti)}**")
-        
         col_A, col_B, col_C = st.columns(3)
         for indice, giocatore in enumerate(tutti):
             ruolo = stats[giocatore].get("ruolo", "Indifferente")
             testo = f"• **{giocatore}** ({ruolo[:3]})"
-
             if indice % 3 == 0: col_A.markdown(testo)
             elif indice % 3 == 1: col_B.markdown(testo)
             else: col_C.markdown(testo)
@@ -350,7 +312,6 @@ def pagina_gestione():
         g_sel = st.selectbox("Seleziona giocatore:", tutti)
         ruolo_attuale = stats[g_sel].get("ruolo", "Indifferente")
         nuovo_ruolo = st.radio("Ruolo in campo:", ["Attaccante", "Difesa", "Indifferente"], index=["Attaccante", "Difesa", "Indifferente"].index(ruolo_attuale))
-        
         if st.button("Aggiorna Ruolo"):
             stats[g_sel]["ruolo"] = nuovo_ruolo
             salva_su_github(FILE_STATISTICHE, stats)
@@ -369,9 +330,9 @@ def pagina_gestione():
             salva_su_github(FILE_STATISTICHE, stats)
             if da_rimuovere in st.session_state.partite_giocate_oggi:
                 del st.session_state.partite_giocate_oggi[da_rimuovere]
-            
             st.session_state.msg_success = f"Rimosso {da_rimuovere}."
             st.rerun()
+
 
 # --- CONFIGURAZIONE NAVIGAZIONE ---
 st.set_page_config(page_title="Calcio Balilla", layout="centered", page_icon="⚽")
