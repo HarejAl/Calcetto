@@ -5,11 +5,10 @@ import os
 
 # --- CONFIGURAZIONE ---
 FILE_STATISTICHE = 'statistiche.json'
+FILE_PRESENTI = 'presenti.json'
 
 GIOCATORI_DEFAULT = [
-    "Marco", "Luca", "Giovanni", "Matteo", "Andrea", 
-    "Paolo", "Giuseppe", "Antonio", "Davide", "Simone", 
-    "Alessandro", "Federico", "Lorenzo", "Stefano", "Michele"
+    "Lorenzo", "Luca", "Giovanni", "Alexander", "Alessandro"
 ]
 
 # --- FUNZIONI DI SUPPORTO ---
@@ -26,7 +25,24 @@ def salva_statistiche(stats):
     with open(FILE_STATISTICHE, 'w') as f:
         json.dump(stats, f)
 
-# Inizializzazione stati
+def carica_presenti(tutti_i_giocatori):
+    """Carica la lista dei presenti dell'ultima volta. Se non esiste, mette tutti."""
+    if os.path.exists(FILE_PRESENTI):
+        try:
+            with open(FILE_PRESENTI, 'r') as f:
+                lista = json.load(f)
+                # Filtra solo i presenti che esistono ancora nell'anagrafica globale
+                validi = [g for g in lista if g in tutti_i_giocatori]
+                return validi if validi else tutti_i_giocatori.copy()
+        except:
+            return tutti_i_giocatori.copy()
+    return tutti_i_giocatori.copy()
+
+def salva_presenti(lista):
+    with open(FILE_PRESENTI, 'w') as f:
+        json.dump(lista, f)
+
+# --- INIZIALIZZAZIONE STATI (MEMORIA) ---
 if 'stats' not in st.session_state:
     st.session_state.stats = carica_statistiche()
 
@@ -36,10 +52,13 @@ if 'storico_squadre_oggi' not in st.session_state:
 if 'partite_giocate_oggi' not in st.session_state:
     st.session_state.partite_giocate_oggi = {}
 
+if 'coppie_giocate_oggi' not in st.session_state:
+    st.session_state.coppie_giocate_oggi = set()
+
 # --- PAGINA 1: GENERATORE BILIARDINO ---
 def pagina_generatore():
     st.title("Generatore Calcio Balilla")
-    st.write("Seleziona i presenti. L'algoritmo calcolera' le squadre in background basandosi sullo storico, privilegiando chi ha giocato meno.")
+    st.write("Seleziona i presenti. L'algoritmo calcolera' le squadre privilegiando chi ha giocato meno.")
 
     stats = st.session_state.stats
     tutti_i_giocatori = sorted(list(stats.keys()))
@@ -48,16 +67,23 @@ def pagina_generatore():
         st.info("Vai nella pagina 'Gestione Giocatori' per aggiungere i colleghi.", icon=None)
         return
 
-    # Inizializza i contatori odierni per chi non c'è ancora
+    # Inizializza i contatori odierni
     for g in tutti_i_giocatori:
         if g not in st.session_state.partite_giocate_oggi:
             st.session_state.partite_giocate_oggi[g] = 0
 
+    # 1. Recupera la lista dei presenti salvata l'ultima volta
+    presenti_salvati = carica_presenti(tutti_i_giocatori)
+
+    # 2. Mostra il selettore con i presenti della volta scorsa già spuntati
     presenti_oggi = st.multiselect(
         "Chi gioca oggi?", 
         options=tutti_i_giocatori, 
-        default=tutti_i_giocatori
+        default=presenti_salvati
     )
+    
+    # 3. Salva istantaneamente la selezione su file ad ogni modifica
+    salva_presenti(presenti_oggi)
 
     st.divider()
 
@@ -68,39 +94,35 @@ def pagina_generatore():
             tentativi = 0
             squadra_a, squadra_b = [], []
             
-            while tentativi < 50:
+            while tentativi < 100:
                 presenti_mischati = random.sample(presenti_oggi, len(presenti_oggi))
                 
                 presenti_ordinati = sorted(
                     presenti_mischati, 
-                    key=lambda x: (st.session_state.partite_giocate_oggi.get(x, 0), stats.get(x, 0))
+                    key=lambda x: st.session_state.partite_giocate_oggi.get(x, 0)
                 )
                 
                 i_quattro_eletti = presenti_ordinati[:4]
                 
                 random.shuffle(i_quattro_eletti)
-                tentativo_a = sorted(i_quattro_eletti[:2])
-                tentativo_b = sorted(i_quattro_eletti[2:])
+                tentativo_a = tuple(sorted(i_quattro_eletti[:2]))
+                tentativo_b = tuple(sorted(i_quattro_eletti[2:]))
                 
-                coppia_squadre = (tuple(tentativo_a), tuple(tentativo_b))
-                coppia_squadre_inversa = (tuple(tentativo_b), tuple(tentativo_a))
-                
-                if (coppia_squadre not in st.session_state.storico_squadre_oggi) and (coppia_squadre_inversa not in st.session_state.storico_squadre_oggi):
+                if (tentativo_a not in st.session_state.coppie_giocate_oggi) and (tentativo_b not in st.session_state.coppie_giocate_oggi):
                     squadra_a, squadra_b = tentativo_a, tentativo_b
-                    st.session_state.storico_squadre_oggi.append(coppia_squadre)
+                    st.session_state.coppie_giocate_oggi.add(squadra_a)
+                    st.session_state.coppie_giocate_oggi.add(squadra_b)
+                    st.session_state.storico_squadre_oggi.append((squadra_a, squadra_b))
                     break
                 
                 tentativi += 1
 
             if not squadra_a:
                 squadra_a, squadra_b = tentativo_a, tentativo_b
+                st.session_state.storico_squadre_oggi.append((squadra_a, squadra_b))
 
             for giocatore in squadra_a + squadra_b:
-                stats[giocatore] = stats.get(giocatore, 0) + 1
                 st.session_state.partite_giocate_oggi[giocatore] += 1
-            
-            salva_statistiche(stats)
-            st.session_state.stats = stats
             
             col1, col2 = st.columns(2)
             with col1:
@@ -112,21 +134,23 @@ def pagina_generatore():
 
     st.divider()
 
+    # MOSTRIAMO LE PARTITE DELLA SESSIONE ODIERNA (DA SOTTO IN SU)
     st.subheader("Partite della Sessione Odierna")
     if st.session_state.storico_squadre_oggi:
-        for indice, match in enumerate(st.session_state.storico_squadre_oggi):
+        for match in reversed(st.session_state.storico_squadre_oggi):
             squadra_1 = " e ".join(match[0])
             squadra_2 = " e ".join(match[1])
-            st.write(f"**Partita {indice + 1}:** {squadra_1} **VS** {squadra_2}")
+            st.write(f"{squadra_1} **VS** {squadra_2}")
     else:
         st.write("Nessuna partita generata in questa sessione.")
     
     st.write("") 
     if st.button("Azzera Sessione Odierna", use_container_width=True):
         st.session_state.storico_squadre_oggi = []
+        st.session_state.coppie_giocate_oggi.clear()
         for g in st.session_state.partite_giocate_oggi:
             st.session_state.partite_giocate_oggi[g] = 0
-        st.success("Sessione azzerata. Le combinazioni odierne sono state resettate.", icon=None)
+        st.success("Sessione azzerata. Contatori di oggi e coppie resettate.", icon=None)
         st.rerun()
 
 
@@ -136,10 +160,26 @@ def aggiungi_giocatore():
     if nuovo and nuovo not in st.session_state.stats:
         st.session_state.stats[nuovo] = 0
         salva_statistiche(st.session_state.stats)
+        
         if 'partite_giocate_oggi' in st.session_state:
             st.session_state.partite_giocate_oggi[nuovo] = 0
+            
+        # Quando aggiungi un giocatore, lo inseriamo automaticamente tra i presenti di oggi
+        if os.path.exists(FILE_PRESENTI):
+            try:
+                with open(FILE_PRESENTI, 'r') as f:
+                    lista = json.load(f)
+            except:
+                lista = []
+        else:
+            lista = list(st.session_state.stats.keys())
+        
+        if nuovo not in lista:
+            lista.append(nuovo)
+            salva_presenti(lista)
+            
         st.session_state.msg_success = f"{nuovo} aggiunto!"
-        st.session_state.input_nome = "" # Questo svuota il campo correttamente
+        st.session_state.input_nome = "" 
     elif nuovo in st.session_state.stats:
         st.session_state.msg_warning = "Esiste gia'!"
 
@@ -169,7 +209,6 @@ def pagina_gestione():
     if "input_nome" not in st.session_state:
         st.session_state.input_nome = ""
 
-    # Usiamo on_change per il tasto "Invio" e on_click per il bottone
     st.text_input("Nome:", key="input_nome", on_change=aggiungi_giocatore)
     st.button("Aggiungi", on_click=aggiungi_giocatore)
 
