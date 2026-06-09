@@ -320,6 +320,24 @@ def pagina_gestione():
         st.warning(st.session_state.msg_warning, icon=None)
         del st.session_state.msg_warning
 
+    # --- SEZIONE LISTA GIOCATORI E RUOLI ---
+    st.subheader("👥 Colleghi Attualmente Registrati")
+    if tutti:
+        st.write(f"Totale nel database: **{len(tutti)}**")
+        
+        col_A, col_B, col_C = st.columns(3)
+        for indice, giocatore in enumerate(tutti):
+            ruolo = stats[giocatore].get("ruolo", "Indifferente")
+            testo = f"• **{giocatore}** ({ruolo[:3]})"
+
+            if indice % 3 == 0: col_A.markdown(testo)
+            elif indice % 3 == 1: col_B.markdown(testo)
+            else: col_C.markdown(testo)
+    else:
+        st.info("Nessun giocatore presente nella lista.", icon=None)
+
+    st.divider()
+
     st.subheader("Aggiungi Nuovo Collega")
     if "input_nome" not in st.session_state: st.session_state.input_nome = ""
     st.text_input("Nome:", key="input_nome", on_change=aggiungi_giocatore)
