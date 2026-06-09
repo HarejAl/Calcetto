@@ -1,1 +1,8 @@
-*.txt
+# Script di amministrazione locale
+reset_classifica.py
+
+# File di sistema
+__pycache__/
+*.pyc
+.DS_Store
+.streamlit/config.toml
