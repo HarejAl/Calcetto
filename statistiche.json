@@ -13,9 +13,9 @@
     },
     "Alessandro": {
         "ruolo": "Indifferente",
-        "vinte": 0,
+        "vinte": 1,
         "perse": 1,
-        "elo": 1180.0
+        "elo": 1200.0
     },
     "Lorenzo": {
         "ruolo": "Indifferente",
@@ -44,8 +44,8 @@
     "Chiara": {
         "ruolo": "Indifferente",
         "vinte": 0,
-        "perse": 1,
-        "elo": 1180.0
+        "perse": 2,
+        "elo": 1160.0
     },
     "Ludovica": {
         "ruolo": "Indifferente",
@@ -55,9 +55,9 @@
     },
     "Lucio": {
         "ruolo": "Indifferente",
-        "vinte": 0,
+        "vinte": 1,
         "perse": 0,
-        "elo": 1200
+        "elo": 1220.0
     },
     "Libero": {
         "ruolo": "Indifferente",
@@ -68,8 +68,8 @@
     "Alberto": {
         "ruolo": "Attaccante",
         "vinte": 0,
-        "perse": 0,
-        "elo": 1200
+        "perse": 1,
+        "elo": 1180.0
     },
     "Salvatore": {
         "ruolo": "Indifferente",
