@@ -7,7 +7,7 @@ from github import Github
 
 # --- CONFIGURAZIONE ---
 FILE_STATISTICHE = 'statistiche.json'
-FILE_PRESENTI = 'presenti.json'
+# IL FILE PRESENTI È STATO COMPLETAMENTE ELIMINATO!
 
 GIOCATORI_DEFAULT = [
     "Lorenzo", "Luca", "Giovanni", "Alexander", "Alessandro"
@@ -53,7 +53,6 @@ def carica_statistiche():
     default_stats = {g: {"ruolo": "Indifferente", "vinte": 0, "perse": 0, "elo": 1200} for g in GIOCATORI_DEFAULT}
     stats = carica_da_github(FILE_STATISTICHE, default_stats)
     
-    # Migrazione dei vecchi dati: aggiunge l'Elo a 1200 se non esiste
     for k, v in stats.items():
         if isinstance(v, int):
             stats[k] = {"ruolo": "Indifferente", "vinte": 0, "perse": 0, "elo": 1200}
@@ -65,12 +64,7 @@ def carica_statistiche():
         
     return stats
 
-def carica_presenti(tutti_i_giocatori):
-    lista = carica_da_github(FILE_PRESENTI, tutti_i_giocatori.copy())
-    validi = [g for g in lista if g in tutti_i_giocatori]
-    return validi if validi else tutti_i_giocatori.copy()
-
-# --- INIZIALIZZAZIONE STATI ---
+# --- INIZIALIZZAZIONE STATI (MEMORIA EFFIMERA) ---
 if 'stats' not in st.session_state:
     st.session_state.stats = carica_statistiche()
 if 'storico_squadre_oggi' not in st.session_state:
@@ -80,25 +74,19 @@ if 'partite_giocate_oggi' not in st.session_state:
 if 'coppie_giocate_oggi' not in st.session_state:
     st.session_state.coppie_giocate_oggi = set()
 
-
 # --- ALGORITMI E MOTORE (SISTEMA ELO) ---
 def aggiorna_elo(vincenti, perdenti):
-    # K-factor determina quanto velocemente cambia il punteggio. 40 è ideale per pochi match.
     K = 40 
     
-    # Calcola l'Elo medio delle due squadre
     elo_v = (st.session_state.stats[vincenti[0]].get("elo", 1200) + st.session_state.stats[vincenti[1]].get("elo", 1200)) / 2
     elo_p = (st.session_state.stats[perdenti[0]].get("elo", 1200) + st.session_state.stats[perdenti[1]].get("elo", 1200)) / 2
 
-    # Calcola le probabilità di vittoria matematiche (Formula standard Elo)
     prob_v = 1 / (1 + 10 ** ((elo_p - elo_v) / 400))
     prob_p = 1 / (1 + 10 ** ((elo_v - elo_p) / 400))
 
-    # Delta punteggio (I vincenti puntano a 1, i perdenti puntano a 0)
     delta_v = K * (1 - prob_v)
-    delta_p = K * (0 - prob_p) # Risultato negativo
+    delta_p = K * (0 - prob_p)
 
-    # Aggiorna e salva i punteggi dei singoli giocatori
     for g in vincenti:
         st.session_state.stats[g]["elo"] = st.session_state.stats[g].get("elo", 1200) + delta_v
     for g in perdenti:
@@ -107,7 +95,6 @@ def aggiorna_elo(vincenti, perdenti):
 def valuta_formazione(sq1, sq2):
     penalita = 0
     
-    # Usiamo il PUNTEGGIO ELO per bilanciare le squadre, molto più preciso del Win Rate!
     elo_sq1 = (st.session_state.stats[sq1[0]].get("elo", 1200) + st.session_state.stats[sq1[1]].get("elo", 1200)) / 2
     elo_sq2 = (st.session_state.stats[sq2[0]].get("elo", 1200) + st.session_state.stats[sq2[1]].get("elo", 1200)) / 2
     penalita += abs(elo_sq1 - elo_sq2) 
@@ -126,14 +113,12 @@ def registra_vittoria(match, squadra_vincente):
     vincenti = match["sq1"] if squadra_vincente == 1 else match["sq2"]
     perdenti = match["sq2"] if squadra_vincente == 1 else match["sq1"]
     
-    # 1. Aggiorna l'Elo calcolando i pesi delle squadre
     aggiorna_elo(vincenti, perdenti)
     
-    # 2. Aggiorna le statistiche classiche (vinte/perse)
     for g in vincenti: st.session_state.stats[g]["vinte"] += 1
     for g in perdenti: st.session_state.stats[g]["perse"] += 1
     
-    # 3. Salva su Cloud
+    # QUESTO È IL VERO COMMIT CHE AVVIENE SOLO A FINE PARTITA
     salva_su_github(FILE_STATISTICHE, st.session_state.stats)
 
 def scarta_partita(match):
@@ -163,8 +148,16 @@ def pagina_generatore():
         if g not in st.session_state.partite_giocate_oggi:
             st.session_state.partite_giocate_oggi[g] = 0
 
-    presenti_oggi = st.multiselect("Chi gioca oggi?", options=tutti_i_giocatori, default=carica_presenti(tutti_i_giocatori))
-    salva_su_github(FILE_PRESENTI, presenti_oggi)
+    # SFRUTTA LA MEMORIA EFFIMERA DI STREAMLIT PER I PRESENTI!
+    if 'default_presenti' not in st.session_state:
+        st.session_state.default_presenti = tutti_i_giocatori.copy()
+    else:
+        # Pulisce eventuali giocatori eliminati dalla RAM
+        st.session_state.default_presenti = [g for g in st.session_state.default_presenti if g in tutti_i_giocatori]
+
+    presenti_oggi = st.multiselect("Chi gioca oggi?", options=tutti_i_giocatori, default=st.session_state.default_presenti)
+    st.session_state.default_presenti = presenti_oggi
+    
     usa_ranking = st.toggle("⚖️ Bilancia squadre (Livello Elo e Ruoli)", value=True)
     st.divider()
 
@@ -213,19 +206,29 @@ def pagina_generatore():
     st.subheader("📝 Partite della Sessione Odierna")
     if st.session_state.storico_squadre_oggi:
         for match in reversed(st.session_state.storico_squadre_oggi):
-            # Formattazione nomi pulita senza ruoli
-            sq1_str = " e ".join(match["sq1"])
-            sq2_str = " e ".join(match["sq2"])
+            elo_sq1_g1 = int(st.session_state.stats[match["sq1"][0]].get("elo", 1200))
+            elo_sq1_g2 = int(st.session_state.stats[match["sq1"][1]].get("elo", 1200))
+            elo_sq2_g1 = int(st.session_state.stats[match["sq2"][0]].get("elo", 1200))
+            elo_sq2_g2 = int(st.session_state.stats[match["sq2"][1]].get("elo", 1200))
+            
+            media_sq1 = int((elo_sq1_g1 + elo_sq1_g2) / 2)
+            media_sq2 = int((elo_sq2_g1 + elo_sq2_g2) / 2)
+            
+            sq1_str = f"{match['sq1'][0]} ({elo_sq1_g1} pt) e {match['sq1'][1]} ({elo_sq1_g2} pt)"
+            sq2_str = f"{match['sq2'][0]} ({elo_sq2_g1} pt) e {match['sq2'][1]} ({elo_sq2_g2} pt)"
             
             with st.container(border=True):
-                st.write(f"🔵 **Squadra 1:** {sq1_str}  \n🔴 **Squadra 2:** {sq2_str}")
+                st.write(f"🔵 **Squadra 1 (Media: {media_sq1} pt):** {sq1_str}  \n🔴 **Squadra 2 (Media: {media_sq2} pt):** {sq2_str}")
                 if not match["risolta"]:
                     colA, colB, colC = st.columns(3)
                     if colA.button("🏆 Vince Sq. 1", key=f"v1_{match['id']}", use_container_width=True):
-                        registra_vittoria(match, 1)
+                        # Aggiunto lo spinner per segnalare visivamente il caricamento
+                        with st.spinner("Salvataggio vittoria su Cloud..."):
+                            registra_vittoria(match, 1)
                         st.rerun()
                     if colB.button("🏆 Vince Sq. 2", key=f"v2_{match['id']}", use_container_width=True):
-                        registra_vittoria(match, 2)
+                        with st.spinner("Salvataggio vittoria su Cloud..."):
+                            registra_vittoria(match, 2)
                         st.rerun()
                     if colC.button("❌ Scarta", key=f"sc_{match['id']}", use_container_width=True):
                         scarta_partita(match)
@@ -247,7 +250,6 @@ def pagina_generatore():
     
     st.caption("💡 *Questo tasto serve solo a svuotare la lista dei match sullo schermo, resettare i contatori delle partite fatte oggi e azzerare la memoria di chi ha già fatto coppia con chi per fare nuove rotazioni dei presenti. **NON cancella** la classifica globale.*")
 
-
 # --- PAGINA 2: CLASSIFICA ---
 def pagina_classifica():
     st.title("🏆 Classifica Elo")
@@ -263,10 +265,9 @@ def pagina_classifica():
         perse = dati.get("perse", 0)
         totali = vinte + perse
         win_rate = (vinte / totali * 100) if totali > 0 else 0.0
-        elo = dati.get("elo", 1200) # Tutti i giocatori partono da 1200
+        elo = dati.get("elo", 1200)
         classifica.append({"nome": giocatore, "win_rate": win_rate, "totali": totali, "vinte": vinte, "perse": perse, "elo": elo})
 
-    # Ora ordiniamo PRIMA per Elo (decrescente), poi per partite vinte
     classifica_ordinata = sorted(classifica, key=lambda x: (x["elo"], x["vinte"]), reverse=True)
     giocatori_attivi = [p for p in classifica_ordinata if p["totali"] > 0]
     giocatori_inattivi = [p for p in classifica_ordinata if p["totali"] == 0]
@@ -277,7 +278,7 @@ def pagina_classifica():
         for i, p in enumerate(giocatori_attivi):
             pos = "🥇" if i == 0 else "🥈" if i == 1 else "🥉" if i == 2 else f"**{i+1}.**"
             with st.container():
-                st.markdown(f"### {pos} {p['nome']} - {int(p['elo'])} pt")
+                st.markdown(f"### {pos} {p['nome']} - {p['elo']:.0f} pt")
                 st.caption(f"Vittorie: {p['vinte']} | Sconfitte: {p['perse']} (Win-Rate: {p['win_rate']:.1f}%)")
                 st.divider()
     else:
@@ -287,20 +288,19 @@ def pagina_classifica():
         st.write("👤 **Ancora nessuna partita registrata (1200 pt base):**")
         st.write(", ".join([p["nome"] for p in giocatori_inattivi]))
 
-
 # --- PAGINA 3: GESTIONE ---
 def aggiungi_giocatore():
     nuovo = st.session_state.input_nome.strip()
     if nuovo and nuovo not in st.session_state.stats:
-        # Aggiunto anche qui il punteggio base di partenza a 1200
         st.session_state.stats[nuovo] = {"ruolo": "Indifferente", "vinte": 0, "perse": 0, "elo": 1200}
         salva_su_github(FILE_STATISTICHE, st.session_state.stats)
         if 'partite_giocate_oggi' in st.session_state:
             st.session_state.partite_giocate_oggi[nuovo] = 0
-        lista = carica_presenti(list(st.session_state.stats.keys()))
-        if nuovo not in lista:
-            lista.append(nuovo)
-            salva_su_github(FILE_PRESENTI, lista)
+        
+        # Aggiunge al volo il nuovo collega alla RAM dei presenti
+        if 'default_presenti' in st.session_state and nuovo not in st.session_state.default_presenti:
+            st.session_state.default_presenti.append(nuovo)
+            
         st.session_state.msg_success = f"{nuovo} aggiunto!"
         st.session_state.input_nome = "" 
     elif nuovo in st.session_state.stats:
@@ -361,9 +361,13 @@ def pagina_gestione():
             salva_su_github(FILE_STATISTICHE, stats)
             if da_rimuovere in st.session_state.partite_giocate_oggi:
                 del st.session_state.partite_giocate_oggi[da_rimuovere]
+            
+            # Lo rimuove anche dalla RAM dei presenti
+            if 'default_presenti' in st.session_state and da_rimuovere in st.session_state.default_presenti:
+                st.session_state.default_presenti.remove(da_rimuovere)
+                
             st.session_state.msg_success = f"Rimosso {da_rimuovere}."
             st.rerun()
-
 
 # --- CONFIGURAZIONE NAVIGAZIONE ---
 st.set_page_config(page_title="Calcio Balilla", layout="centered", page_icon="⚽")
