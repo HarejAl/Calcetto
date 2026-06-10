@@ -14,8 +14,8 @@
     "Alessandro": {
         "ruolo": "Indifferente",
         "vinte": 0,
-        "perse": 0,
-        "elo": 1200.0
+        "perse": 1,
+        "elo": 1180.0
     },
     "Lorenzo": {
         "ruolo": "Indifferente",
@@ -26,14 +26,14 @@
     "Alex": {
         "ruolo": "Indifferente",
         "vinte": 0,
-        "perse": 0,
-        "elo": 1200
+        "perse": 1,
+        "elo": 1180.0
     },
     "Alexander": {
         "ruolo": "Difesa",
-        "vinte": 0,
+        "vinte": 1,
         "perse": 0,
-        "elo": 1238.8499774443092
+        "elo": 1258.8499774443092
     },
     "Rafael": {
         "ruolo": "Indifferente",
@@ -67,9 +67,9 @@
     },
     "Alberto": {
         "ruolo": "Attaccante",
-        "vinte": 0,
+        "vinte": 1,
         "perse": 0,
-        "elo": 1161.1500225556908
+        "elo": 1181.1500225556908
     },
     "Salvatore": {
         "ruolo": "Indifferente",
