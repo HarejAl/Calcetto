@@ -7,7 +7,7 @@ from github import Github
 
 # --- CONFIGURAZIONE ---
 FILE_STATISTICHE = 'statistiche.json'
-# IL FILE PRESENTI È STATO COMPLETAMENTE ELIMINATO!
+FILE_PRESENTI = 'presenti.json' # REINSERITO PER MEMORIA A LUNGO TERMINE
 
 GIOCATORI_DEFAULT = [
     "Lorenzo", "Luca", "Giovanni", "Alexander", "Alessandro"
@@ -64,6 +64,11 @@ def carica_statistiche():
         
     return stats
 
+def carica_presenti(tutti_i_giocatori):
+    lista = carica_da_github(FILE_PRESENTI, tutti_i_giocatori.copy())
+    validi = [g for g in lista if g in tutti_i_giocatori]
+    return validi if validi else tutti_i_giocatori.copy()
+
 # --- INIZIALIZZAZIONE STATI (MEMORIA EFFIMERA) ---
 if 'stats' not in st.session_state:
     st.session_state.stats = carica_statistiche()
@@ -73,6 +78,15 @@ if 'partite_giocate_oggi' not in st.session_state:
     st.session_state.partite_giocate_oggi = {}
 if 'coppie_giocate_oggi' not in st.session_state:
     st.session_state.coppie_giocate_oggi = set()
+
+# Recupera la lista dei giocatori presenti per la memoria persistente
+tutti_i_gioc_iniziali = sorted(list(st.session_state.stats.keys()))
+if 'default_presenti' not in st.session_state:
+    st.session_state.default_presenti = carica_presenti(tutti_i_gioc_iniziali)
+# Conserva un backup per capire quando è il momento di salvare
+if 'presenti_salvati' not in st.session_state:
+    st.session_state.presenti_salvati = st.session_state.default_presenti.copy()
+
 
 # --- ALGORITMI E MOTORE (SISTEMA ELO) ---
 def aggiorna_elo(vincenti, perdenti):
@@ -118,8 +132,13 @@ def registra_vittoria(match, squadra_vincente):
     for g in vincenti: st.session_state.stats[g]["vinte"] += 1
     for g in perdenti: st.session_state.stats[g]["perse"] += 1
     
-    # QUESTO È IL VERO COMMIT CHE AVVIENE SOLO A FINE PARTITA
+    # COMMIT DELLA CLASSIFICA
     salva_su_github(FILE_STATISTICHE, st.session_state.stats)
+
+    # SMART COMMIT: Salva i presenti SOLO se sono cambiati dall'ultima partita!
+    if st.session_state.default_presenti != st.session_state.presenti_salvati:
+        salva_su_github(FILE_PRESENTI, st.session_state.default_presenti)
+        st.session_state.presenti_salvati = st.session_state.default_presenti.copy()
 
 def scarta_partita(match):
     st.session_state.storico_squadre_oggi.remove(match)
@@ -148,14 +167,12 @@ def pagina_generatore():
         if g not in st.session_state.partite_giocate_oggi:
             st.session_state.partite_giocate_oggi[g] = 0
 
-    # SFRUTTA LA MEMORIA EFFIMERA DI STREAMLIT PER I PRESENTI!
-    if 'default_presenti' not in st.session_state:
-        st.session_state.default_presenti = tutti_i_giocatori.copy()
-    else:
-        # Pulisce eventuali giocatori eliminati dalla RAM
-        st.session_state.default_presenti = [g for g in st.session_state.default_presenti if g in tutti_i_giocatori]
+    # Rimuove dalla selezione eventuali giocatori appena cancellati dal DB
+    st.session_state.default_presenti = [g for g in st.session_state.default_presenti if g in tutti_i_giocatori]
 
     presenti_oggi = st.multiselect("Chi gioca oggi?", options=tutti_i_giocatori, default=st.session_state.default_presenti)
+    
+    # Aggiorna la memoria RAM con le tue scelte a schermo (saranno committate solo a fine partita)
     st.session_state.default_presenti = presenti_oggi
     
     usa_ranking = st.toggle("⚖️ Bilancia squadre (Livello Elo e Ruoli)", value=True)
@@ -222,12 +239,11 @@ def pagina_generatore():
                 if not match["risolta"]:
                     colA, colB, colC = st.columns(3)
                     if colA.button("🏆 Vince Sq. 1", key=f"v1_{match['id']}", use_container_width=True):
-                        # Aggiunto lo spinner per segnalare visivamente il caricamento
-                        with st.spinner("Salvataggio vittoria su Cloud..."):
+                        with st.spinner("Salvataggio su Cloud..."):
                             registra_vittoria(match, 1)
                         st.rerun()
                     if colB.button("🏆 Vince Sq. 2", key=f"v2_{match['id']}", use_container_width=True):
-                        with st.spinner("Salvataggio vittoria su Cloud..."):
+                        with st.spinner("Salvataggio su Cloud..."):
                             registra_vittoria(match, 2)
                         st.rerun()
                     if colC.button("❌ Scarta", key=f"sc_{match['id']}", use_container_width=True):
@@ -249,6 +265,7 @@ def pagina_generatore():
         st.rerun()
     
     st.caption("💡 *Questo tasto serve solo a svuotare la lista dei match sullo schermo, resettare i contatori delle partite fatte oggi e azzerare la memoria di chi ha già fatto coppia con chi per fare nuove rotazioni dei presenti. **NON cancella** la classifica globale.*")
+
 
 # --- PAGINA 2: CLASSIFICA ---
 def pagina_classifica():
@@ -288,18 +305,21 @@ def pagina_classifica():
         st.write("👤 **Ancora nessuna partita registrata (1200 pt base):**")
         st.write(", ".join([p["nome"] for p in giocatori_inattivi]))
 
+
 # --- PAGINA 3: GESTIONE ---
 def aggiungi_giocatore():
     nuovo = st.session_state.input_nome.strip()
     if nuovo and nuovo not in st.session_state.stats:
         st.session_state.stats[nuovo] = {"ruolo": "Indifferente", "vinte": 0, "perse": 0, "elo": 1200}
         salva_su_github(FILE_STATISTICHE, st.session_state.stats)
+        
         if 'partite_giocate_oggi' in st.session_state:
             st.session_state.partite_giocate_oggi[nuovo] = 0
-        
-        # Aggiunge al volo il nuovo collega alla RAM dei presenti
+            
         if 'default_presenti' in st.session_state and nuovo not in st.session_state.default_presenti:
             st.session_state.default_presenti.append(nuovo)
+            salva_su_github(FILE_PRESENTI, st.session_state.default_presenti)
+            st.session_state.presenti_salvati = st.session_state.default_presenti.copy()
             
         st.session_state.msg_success = f"{nuovo} aggiunto!"
         st.session_state.input_nome = "" 
@@ -362,12 +382,14 @@ def pagina_gestione():
             if da_rimuovere in st.session_state.partite_giocate_oggi:
                 del st.session_state.partite_giocate_oggi[da_rimuovere]
             
-            # Lo rimuove anche dalla RAM dei presenti
             if 'default_presenti' in st.session_state and da_rimuovere in st.session_state.default_presenti:
                 st.session_state.default_presenti.remove(da_rimuovere)
+                salva_su_github(FILE_PRESENTI, st.session_state.default_presenti)
+                st.session_state.presenti_salvati = st.session_state.default_presenti.copy()
                 
             st.session_state.msg_success = f"Rimosso {da_rimuovere}."
             st.rerun()
+
 
 # --- CONFIGURAZIONE NAVIGAZIONE ---
 st.set_page_config(page_title="Calcio Balilla", layout="centered", page_icon="⚽")
