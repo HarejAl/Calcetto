@@ -88,5 +88,11 @@
         "vinte": 0,
         "perse": 0,
         "elo": 1200
+    },
+    "Francesco": {
+        "ruolo": "Indifferente",
+        "vinte": 0,
+        "perse": 0,
+        "elo": 1200
     }
 }
